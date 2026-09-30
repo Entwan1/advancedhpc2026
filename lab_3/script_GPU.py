@@ -2,8 +2,9 @@ from numba import cuda
 from matplotlib import pyplot
 import numpy as np
 import time
+import sys
 
-src = pyplot.imread("big-cat.jpg")
+src = pyplot.imread(sys.argv[1])
 flatSrc = src.reshape(-1, 3)
 height = src.shape[0]
 width = src.shape[1]
@@ -28,5 +29,5 @@ stop = time.time()
 
 hostDst = devDst.copy_to_host().reshape(height, width, 3)
 
-print("Computation time with GPU : ", stop - start)
-pyplot.imsave("result_GPU.jpg", hostDst)
+print("GPU : ", stop - start)
+pyplot.imsave(sys.argv[2], hostDst)

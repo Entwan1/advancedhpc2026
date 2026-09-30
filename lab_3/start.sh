@@ -1,6 +1,12 @@
 #!/bin/bash
-rm result_CPU.jpg
-rm result_GPU.jpg
+rm output/*
 
-python script_CPU.py
-python script_GPU.py
+echo 'Computation time for a small image:'
+
+python script_CPU.py input/small-cat.jpg output/result_CPU_small-cat.jpg
+python script_GPU.py input/small-cat.jpg output/result_GPU_small-cat.jpg
+
+echo 'Computation time for a big image:'
+
+python script_CPU.py input/big-cat.jpg output/result_CPU_big-cat.jpg
+python script_GPU.py input/big-cat.jpg output/result_GPU_big-cat.jpg

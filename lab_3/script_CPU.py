@@ -1,8 +1,9 @@
 from matplotlib import pyplot
 import numpy as np
 import time
+import sys
 
-src = pyplot.imread("big-cat.jpg")
+src = pyplot.imread(sys.argv[1])
 flatSrc = src.reshape(-1, 3)
 height = src.shape[0]
 width = src.shape[1]
@@ -23,5 +24,5 @@ stop = time.time()
 
 result2D = result.reshape(height, width, 3)
 
-print("Computation time with CPU : ", stop - start)
-pyplot.imsave("result_CPU.jpg", result2D)
+print("CPU : ", stop - start)
+pyplot.imsave(sys.argv[2], result2D)
