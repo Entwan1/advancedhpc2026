@@ -1,0 +1,99 @@
+\documentclass{report}
+\usepackage{listings}
+
+\begin{document}
+\title{labwork 3}
+\maketitle
+
+\section{Image transformation with CPU}
+We load the image in a 2D array, we transform it with .reshape to have a 1D array of pixels each pixels being an array of size 3 corresponding to RGB colors.
+\begin{lstlisting}
+src = pyplot.imread("small-cat.jpg")
+flatSrc = src.reshape(-1, 3)
+height = src.shape[0]
+width = src.shape[1]
+\end{lstlisting}
+The grayscale function takes the 1D array we just created in parameters.
+We create a new empty array of the same size for the new image. The loop goes through all the pixels and makes the average of the values of RGB, then this average is reassigned to each value of RGB to make a shade of grey.
+\newline
+\newline
+Since each RGB colors are represented by an 8 bit unsigned int the max value is 255. So when we add them together for the average we need to change there type, otherwise we would get an overflow error.
+\begin{lstlisting}
+def grayscale(flatImg):
+    resultFlatImg = np.zeros((len(flatImg), 3), np.uint8())
+    for i in range(len(flatImg)):
+        g = np.uint8((int(flatImg[i, 0]) + int(flatImg[i, 1]) + int(flatImg[i, 2])) / 3)
+        resultFlatImg[i, 0] = g
+        resultFlatImg[i, 1] = g
+        resultFlatImg[i, 2] = g
+
+    return resultFlatImg
+\end{lstlisting}
+We measure the time of computing to compare with the GPU. We unflaten the image and save it with pyplot.imsave.
+
+\begin{lstlisting}
+start = time.time()
+result = grayscale(flatSrc)
+stop = time.time()
+
+result2D = result.reshape(height, width, 3)
+
+print("Computation time with CPU : ", stop - start)
+pyplot.imsave("result_CPU.jpg", result2D)
+\end{lstlisting}
+\newpage
+
+\section{Image transformation with GPU}
+
+Same as for the CPU we load and flaten the image. We fix the size of the bloc at 64 which is arbitrary (needs to be a multiple of 2). This means in each block there will be 64 threads. Then we fix the size of the grid which corresponds to the number of blocks, we need to have a thread for each pixel so we have to round up the size of the grid to avoid having missing pixels.
+\begin{lstlisting}
+src = pyplot.imread("small-cat.jpg")
+flatSrc = src.reshape(-1, 3)
+height = src.shape[0]
+width = src.shape[1]
+pixelCount = height * width
+blockSize = 64
+
+# round up so we don't left any pixels
+gridSize = gridSize = (pixelCount + blockSize - 1) // blockSize
+\end{lstlisting}
+We use the @cuda.jit annotation to define the code that will be executed on the GPU. 
+The "tidx" variable represent each thread. As for the CPU we make the average of the RGB values and reassign this average to them. 
+Then, we calculate computation time.
+
+\begin{lstlisting}
+@cuda.jit
+def grayscale(src, dst):
+    tidx = cuda.threadIdx.x + cuda.blockIdx.x * cuda.blockDim.x
+    g = np.uint8((src[tidx, 0] + src[tidx, 1] + src[tidx, 2]) / 3)
+    dst[tidx, 0] = dst[tidx, 1] = dst[tidx, 2] = g
+
+devSrc = cuda.to_device(flatSrc)
+devDst = cuda.device_array((pixelCount, 3), np.uint8)
+
+start = time.time()
+grayscale[gridSize, blockSize](devSrc, devDst)
+stop = time.time()
+\end{lstlisting}
+We retreive the output and reshape it to get a 2D array. Then we transform this array in a image.
+\begin{lstlisting}
+hostDst = devDst.copy_to_host().reshape(height, width, 3)
+
+print("Computation time with GPU : ", stop - start)
+pyplot.imsave("result_GPU.jpg", hostDst)
+\end{lstlisting}
+\newpage
+\section{Results}
+First I tested with a small image (51 726 pixels). As we can see, here the CPU is way faster than the GPU.
+\begin{verbatim}
+Computation time with CPU :  0.04534649848937988
+Computation time with GPU :  0.39477062225341797
+\end{verbatim}
+
+Then I tested with a bigger image (24 160 256 pixels). Here, the computation time of the CPU is multiply by more than 400 while the GPU computation time stay the same. We can make the hypothesis than the time taken by the GPU is not from the computation but from the loading of the data or the compilation.
+\begin{verbatim}
+Computation time with CPU :  19.256381034851074
+Computation time with GPU :  0.36406993865966797
+\end{verbatim}
+
+\end{document}

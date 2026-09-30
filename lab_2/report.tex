@@ -1,0 +1,92 @@
+\documentclass{report}
+\usepackage{listings}
+
+\begin{document}
+\title{labwork 2}
+\maketitle
+
+\section{Display the GPUs info}
+The first step is to display the informations of the GPUs. It allows us to check if our hardware is well detected and to see the ids of our GPUs.
+\begin{lstlisting}
+GPUs = cuda.detect()
+print(GPUs)
+\end{lstlisting}
+Output:
+\begin{verbatim}
+Found 1 CUDA devices
+id 0    NVIDIA GeForce RTX 3060 Laptop GPU                              [SUPPORTED]
+                      Compute Capability: 8.6
+                           PCI Device ID: 0
+                              PCI Bus ID: 1
+                                    UUID: GPU-9e3ad670-7a54-1231-8562-a36df8ef464c
+                                Watchdog: Enabled
+             FP32/FP64 Performance Ratio: 64
+                            FP16 Support: Yes
+                            BF16 Support: Yes
+                             FP8 Support: No
+Summary:
+        1/1 devices are supported
+True
+\end{verbatim}
+
+\section{Display the name of the GPU}
+Here we just want to show the name of the GPU. We select our GPU using the id that we just displayed.
+\begin{lstlisting}
+gpu = cuda.select_device(0)
+print(gpu.name)
+\end{lstlisting}
+Output:
+\begin{verbatim}
+NVIDIA GeForce RTX 3060 Laptop GPU
+\end{verbatim}
+
+\section{Display the memory information}
+The memory information are part of the Context. We retrieve a Tuple of values corresponding to the free memory and the total memory. Here, we only display the total. 
+\begin{lstlisting}
+print("total memory :", cuda.current_context().get_memory_info()[1])
+\end{lstlisting}
+Output:
+\begin{verbatim}
+total memory : 6441926656
+\end{verbatim}
+
+\section{Display the Cores information}
+We want to get the number of cores but this information is not directly available. However, we can get the number of streaming multiprocessors of the GPU and the compute capability. Then with the dictionary from stackoverflow we can get the number of cores per streaming multiprocessors.
+\begin{lstlisting}
+# the following code is taken from: https://stackoverflow.com/questions/63823395/how-can-i-get-the-number-of-cuda-cores-in-my-gpu-using-python-and-numba
+cc_cores_per_SM_dict = {
+    (2,0) : 32,
+    (2,1) : 48,
+    (3,0) : 192,
+    (3,5) : 192,
+    (3,7) : 192,
+    (5,0) : 128,
+    (5,2) : 128,
+    (6,0) : 64,
+    (6,1) : 128,
+    (7,0) : 64,
+    (7,5) : 64,
+    (8,0) : 64,
+    (8,6) : 128,
+    (8,9) : 128,
+    (9,0) : 128,
+    (10,0) : 128,
+    (12,0) : 128
+    }
+
+my_sms = getattr(gpu, 'MULTIPROCESSOR_COUNT')
+my_cc = gpu.compute_capability
+cores_per_sm = cc_cores_per_SM_dict.get(my_cc)
+total_cores = cores_per_sm*my_sms
+print("GPU compute capability: " , my_cc)
+print("GPU total number of SMs: " , my_sms)
+print("total cores: " , total_cores)
+\end{lstlisting}
+Output:
+\begin{verbatim}
+GPU compute capability:  ComputeCapability(major=8, minor=6)
+GPU total number of SMs:  30
+total cores:  3840
+\end{verbatim}
+
+\end{document}
