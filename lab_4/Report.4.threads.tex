@@ -1,0 +1,89 @@
+\documentclass{report}
+\usepackage{listings}
+\usepackage{graphicx}
+
+\begin{document}
+\title{labwork 4}
+\maketitle
+
+\section{grayscale 2D}
+First, we want to create a new grayscale function that takes in input a 2 dimensional array. The input and output data are defined the same way as for the 1D grayscale:
+\begin{lstlisting}
+devSrc2D = cuda.to_device(src)
+devDst2D = cuda.device_array((height, width, 3), np.uint8)
+\end{lstlisting}
+This time, the block size is a tuple of the same value. Same for the grid size, we use the same principle as for the 1D but we do it with each dimensions.
+\begin{lstlisting}
+blockSize2D = (value, value)
+gridSize2D = ((width + value - 1) // value, (height + value -1) // value)
+\end{lstlisting}
+For the grayscale2D this time the threads are represented as a 2D array so we define x and y. We check that there are not bigger than the size of the source otherwise it would raise an error.
+\begin{lstlisting}
+@cuda.jit
+def grayscale2D(src, dst):
+    x = cuda.threadIdx.x + cuda.blockIdx.x * cuda.blockDim.x
+    y = cuda.threadIdx.y + cuda.blockIdx.y * cuda.blockDim.y
+    if y > src.shape[0] or x > src.shape[1]:
+        return
+    g = np.uint8((src[y, x, 0] + src[y, x, 1] + src[y, x, 2]) / 3)
+    dst[y, x, 0] = dst[y, x, 1] = dst[y, x, 2] = g
+\end{lstlisting}
+\newpage
+\section{Blocksize benchmark}
+For grayscale 1D and 2D we test different block sizes. To test correctly for each block size we run the grayscale function 50 times and get the average.
+A first grayscale function is run without taking it's time to take only the computation time and not the compilation time. The destination is reinitialize each time we change the blocksize so that if there is an error it doesn't keep the old results but only the last one.
+\begin{lstlisting}
+blockSizes1D = [4, 8, 16, 32, 64, 128, 256, 512, 1024]
+blockSizes2D = [2, 4, 8, 16, 32]
+
+for value in blockSizes1D:
+    gridSize1D = (pixelCount + value - 1) // value
+    total = 0
+    devDst1D = cuda.to_device(np.zeros((pixelCount, 3), np.uint8))
+    grayscale1D[gridSize1D, value](devSrc1D, devDst1D)
+    for i in range(nbIter):
+        start = time.time()
+        grayscale1D[gridSize1D, value](devSrc1D, devDst1D)
+        cuda.synchronize()
+        stop = time.time()
+        total += stop - start
+
+    results1D.append(total / nbIter)
+
+for value in blockSizes2D:
+    blockSize2D = (value, value)
+    gridSize2D = ((width + value - 1) // value, (height + value -1) // value)
+    total = 0
+    devDst2D = cuda.to_device(np.zeros((height, width, 3), np.uint8))
+    grayscale2D[gridSize2D, blockSize2D](devSrc2D, devDst2D)
+    for i in range(nbIter):
+        start = time.time()
+        grayscale2D[gridSize2D, blockSize2D](devSrc2D, devDst2D)
+        cuda.synchronize()
+        stop = time.time()
+        total += stop - start
+
+    results2D.append(total / nbIter)
+\end{lstlisting}
+\newpage
+\section{Results}
+As we can see, the best block size for 2D grayscale is (8,8). If we take the best time for 1D and for 2D and compare theme we see that the difference is really close sometime 2D is faster sometimes slower.
+\begin{figure}
+    \centering
+    \includegraphics[width=0.8\linewidth]{chart1D.png}
+    \caption{Block size benchmark 1D}
+    \label{fig:placeholder}
+\end{figure}
+\begin{figure}
+    \centering
+    \includegraphics[width=0.8\linewidth]{image.png}
+    \caption{Block size benchmark 2D}
+    \label{fig:placeholder}
+\end{figure}
+\begin{figure}
+    \centering
+    \includegraphics[width=0.8\linewidth]{chart1Dvs2D.png}
+    \caption{Execution time comparison between 2D and 1D}
+    \label{fig:placeholder}
+\end{figure}
+\end{document}
