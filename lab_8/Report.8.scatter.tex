@@ -1,0 +1,67 @@
+\documentclass{report}
+\usepackage{listings}
+\usepackage{graphicx}
+
+\begin{document}
+\title{labwork 8}
+\maketitle
+\section{RGB to HSV}
+The goal of the exercise is to turn an image from RGB format to HSV and then to turn it back to RGB.
+\subsection{Preparation}
+First, we normalize the RGB values from [0, 255] to [0, 1]. Then, we take the max, the min and the delta between min and max.
+\begin{lstlisting}
+    r = src[y, x, 0] / 255
+    g = src[y, x, 1] / 255
+    b = src[y, x, 2] / 255
+    maxV = max(r, g, b)
+    minV = min(r, g, b)
+    delta = maxV - minV
+\end{lstlisting}
+\subsection{Conversion}
+To turn our RGB image to HSV we apply the following formula:
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.75\linewidth]{formula.png}
+    \label{fig:placeholder}
+\end{figure}
+\newpage
+Which gives in python:
+\begin{lstlisting}
+    if (maxV == 0):
+        dst[1, y, x] = maxV
+    else:
+        dst[1, y, x] = delta / maxV
+
+    dst[2, y, x] = maxV
+    if delta == 0:
+        dst[0, y, x] = 0
+    elif maxV == r:
+        dst[0, y, x] = 60 * (((g - b) / delta) % 6)
+    elif maxV == g:
+        dst[0, y, x] = 60 * ((b - r) / delta + 2)
+    else:
+        dst[0, y, x] = 60 * ((r - g) / delta + 4)
+\end{lstlisting}
+\section{HST to RGB}
+\subsection{Preparation}
+To turn the HSV image back to RGB we simply implement the given formulas:
+\begin{lstlisting}
+    d = h / 60
+    f = d - int(d)
+    l = v * (1 - s)
+    m = v * (1 - f * s)
+    n = v * (1 - (1 - f) * s)
+\end{lstlisting}
+\subsection{Conversion}
+Then we compute the right result depending on the value of H going from 0 to 360.
+\begin{lstlisting}
+    if (0 <= h < 60):
+        dst[y, x, 0] = round(v * 255)
+        dst[y, x, 1] = round(n * 255)
+        dst[y, x, 2] = round(l * 255)
+    elif (60 <= h < 120):
+        dst[y, x, 0] = round(m * 255)
+        dst[y, x, 1] = round(v * 255)
+        dst[y, x, 2] = round(l * 255)
+\end{lstlisting}
+\end{document}
