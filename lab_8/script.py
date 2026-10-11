@@ -4,7 +4,6 @@ import numpy as np
 import time
 
 src = pyplot.imread("input/big-cat.jpg")
-flatSrc = src.reshape(-1, 3)
 height = src.shape[0]
 width = src.shape[1]
 
